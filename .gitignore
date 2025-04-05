@@ -1,0 +1,50 @@
+# 忽略build目录
+build/
+build-*/
+
+# Qt相关临时文件
+*.user
+*.user.*
+*.autosave
+.qmake.stash
+*.qm
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+Makefile*
+*build-*
+
+# 编译生成的文件
+*.o
+*.obj
+*.so
+*.dll
+*.exe
+*.lib
+*.a
+*.dylib
+*.exp
+*.pdb
+
+# CMake生成的文件
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# IDE临时文件
+.idea/
+.vs/
+.vscode/
+*.swp
+*~
+
+# 调试信息
+*.debug
+debug/
+release/
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
