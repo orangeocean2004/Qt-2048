@@ -109,9 +109,12 @@ void MainWindow::setupLoginWidget()
 {
     loginWidget = new Login();
 
+    // 修改处：直接调用 onLoginSuccess，以便更新 currentUser
     connect(loginWidget, &Login::loginSuccess, this,
             [this](const QString &username)
-            { onLoginSuccess(username); });
+            {
+                onLoginSuccess(username);
+            });
 
     stackedWidget->addWidget(loginWidget);
 }
