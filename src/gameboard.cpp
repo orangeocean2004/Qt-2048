@@ -1,6 +1,27 @@
 #include "gameboard.h"
 #include "cell.h"
 #include <cstdlib>
+#include "database.h"
+
+GameBoard::GameBoard(const QString &user, QWidget *parent)
+    : QWidget(parent), currentUser(user)
+{
+    steps = 0; // 初始化步数
+    mainLayout = new QVBoxLayout(this);
+    boardLayout = new QGridLayout();
+    score = new QLabel("SCORE: 0", this);
+    stepLabel = new QLabel("STEPS: 0", this);
+
+    QHBoxLayout *infoLayout = new QHBoxLayout();
+    infoLayout->addWidget(stepLabel);
+    infoLayout->addStretch();
+    infoLayout->addWidget(score);
+
+    mainLayout->addLayout(infoLayout);
+    mainLayout->addLayout(boardLayout);
+
+    drawBoard();
+}
 
 void GameBoard::drawBoard()
 {
@@ -12,6 +33,12 @@ void GameBoard::drawBoard()
         {
             delete cells[i][j];
             cells[i][j] = new Cell(game.board[i][j]);
+
+            // 设置固定宽高比
+            cells[i][j]->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            cells[i][j]->setMinimumSize(140, 140); // 设置最小尺寸
+            cells[i][j]->setMaximumSize(140, 140); // 设置最大尺寸
+
             boardLayout->addWidget(cells[i][j], i, j);
             cells[i][j]->draw();
         }
@@ -53,88 +80,42 @@ void GameBoard::keyPressEvent(QKeyEvent *event)
             game.board[pos[0]][pos[1]] = 2;
         }
         score->setText(QString("SCORE: %1").arg(game.total_score));
+
+        // 更新步数
+        steps++;
+        stepLabel->setText(QString("STEPS: %1").arg(steps));
+
         drawBoard();
         checkGameStatus();
     }
 }
 
-GameBoard::GameBoard(QWidget *parent) : QWidget(parent)
-{
-    /* 游戏窗口大小 */
-    resize(650, 650);
-
-    /* 创建主窗口 */
-    mainLayout = new QVBoxLayout();
-    setLayout(mainLayout);
-    boardLayout = new QGridLayout();
-
-    drawBoard();
-    mainLayout->insertLayout(0, boardLayout);
-
-    /* 增加计分板 */
-    score = new QLabel(QString("SCORE: %1").arg(0));
-    score->setStyleSheet("QLabel {color: rgb(235,224,214);font:16pt;}");
-    score->setFixedHeight(50);
-    mainLayout->insertWidget(1, score, 0, Qt::AlignRight);
-
-    /* 设置样式表 */
-    setStyleSheet("GameBoard {background-color: rgb(187,173,160)}");
-}
-
 void GameBoard::checkGameStatus()
 {
-    if (game.isWin())
+    if (game.isWin() || game.isLose())
     {
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle(tr("恭喜"));
-        msgBox.setText(tr("<div style='font-size:18pt; font-weight:bold; color:#776e65;'>你成功合成了2048!</div>"));
-        msgBox.setInformativeText(tr("<div style='font-size:14pt; color:#776e65;'>最终得分: %1</div>").arg(game.total_score));
-        msgBox.setStandardButtons(QMessageBox::NoButton);
-
-        QPushButton *newGameBtn = msgBox.addButton(tr("新游戏"), QMessageBox::AcceptRole);
-        QPushButton *menuBtn = msgBox.addButton(tr("返回菜单"), QMessageBox::RejectRole);
-
-        QString btnStyle = "QPushButton {"
-                           "background-color: #8f7a66;"
-                           "border-radius: 6px;"
-                           "font-weight: bold;"
-                           "color: white;"
-                           "padding: 10px 20px;"
-                           "min-width: 100px;"
-                           "}"
-                           "QPushButton:hover {"
-                           "background-color: #9f8a76;"
-                           "}";
-        newGameBtn->setStyleSheet(btnStyle);
-        menuBtn->setStyleSheet(btnStyle);
-
-        msgBox.setStyleSheet("QMessageBox {"
-                             "background-color: #faf8ef;"
-                             "}"
-                             "QLabel {"
-                             "color: #776e65;"
-                             "}");
-
-        msgBox.exec();
-
-        if (msgBox.clickedButton() == newGameBtn)
+        // 保存分数到数据库
+        if (!currentUser.isEmpty())
         {
-            game.resetGame();
-            drawBoard();
-            score->setText(QString("SCORE: %1").arg(game.total_score));
+            if (!Database::instance().updateUserScore(currentUser, game.total_score))
+            {
+                qDebug() << "Failed to save score to database.";
+            }
+        }
+
+        QMessageBox msgBox(this);
+        if (game.isWin())
+        {
+            msgBox.setWindowTitle(tr("恭喜"));
+            msgBox.setText(tr("<div style='font-size:18pt; font-weight:bold; color:#776e65;'>你成功合成了2048!</div>"));
         }
         else
         {
-            emit returnToMainMenu();
-            hide();
+            msgBox.setWindowTitle(tr("游戏结束"));
+            msgBox.setText(tr("<div style='font-size:18pt; font-weight:bold; color:#776e65;'>游戏结束!</div>"));
         }
-    }
-    else if (game.isLose())
-    {
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle(tr("游戏结束"));
-        msgBox.setText(tr("<div style='font-size:18pt; font-weight:bold; color:#776e65;'>游戏结束!</div>"));
-        msgBox.setInformativeText(tr("<div style='font-size:14pt; color:#776e65;'>无法继续移动!<br>最终得分: %1</div>").arg(game.total_score));
+
+        msgBox.setInformativeText(tr("<div style='font-size:14pt; color:#776e65;'>最终得分: %1</div>").arg(game.total_score));
         msgBox.setStandardButtons(QMessageBox::NoButton);
 
         QPushButton *newGameBtn = msgBox.addButton(tr("再来一局"), QMessageBox::AcceptRole);
@@ -165,9 +146,7 @@ void GameBoard::checkGameStatus()
 
         if (msgBox.clickedButton() == newGameBtn)
         {
-            game.resetGame();
-            drawBoard();
-            score->setText(QString("SCORE: %1").arg(game.total_score));
+            resetGame();
         }
         else
         {
@@ -180,6 +159,8 @@ void GameBoard::checkGameStatus()
 void GameBoard::resetGame()
 {
     game.resetGame();
+    steps = 0; // 重置步数
+    stepLabel->setText(QString("STEPS: %1").arg(steps));
     drawBoard();
     score->setText(QString("SCORE: %1").arg(game.total_score));
 }

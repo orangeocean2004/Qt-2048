@@ -14,7 +14,7 @@ class GameBoard : public QWidget
 {
     Q_OBJECT
 public:
-    explicit GameBoard(QWidget *parent = 0);
+    explicit GameBoard(const QString &user, QWidget *parent = nullptr);
     void resetGame();
 signals:
     void returnToMainMenu();
@@ -25,6 +25,9 @@ private:
     QVBoxLayout *mainLayout;
     QGridLayout *boardLayout;
     QLabel *score;
+    QLabel *stepLabel;
+    QString currentUser;
+    int steps;
 
     void drawBoard();
     void checkGameStatus();
