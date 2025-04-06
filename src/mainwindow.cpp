@@ -124,13 +124,16 @@ void MainWindow::startGame()
 
     if (!gameBoard)
     {
-        gameBoard = new GameBoard(currentUser, this); // 传递当前用户
-
-        connect(gameBoard, &GameBoard::returnToMainMenu, this,
-                [this]()
+        // 首次创建并绑定信号
+        gameBoard = new GameBoard(currentUser, this);
+        connect(gameBoard, &GameBoard::returnToMainMenu, this, [this]()
                 { stackedWidget->setCurrentWidget(menuWidget); });
-
         stackedWidget->addWidget(gameBoard);
+    }
+    else
+    {
+        // 如果已经存在 gameBoard，就更新其 currentUser
+        gameBoard->setCurrentUser(currentUser);
     }
 
     gameBoard->resetGame();
@@ -229,7 +232,7 @@ void MainWindow::userLogin()
 
 void MainWindow::onLoginSuccess(const QString &username)
 {
-    currentUser = username; 
+    currentUser = username;
 
     if (!titleLabel->text().contains(username))
     {

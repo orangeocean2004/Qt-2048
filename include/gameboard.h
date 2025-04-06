@@ -16,6 +16,7 @@ class GameBoard : public QWidget
 public:
     explicit GameBoard(const QString &user, QWidget *parent = nullptr);
     void resetGame();
+    void setCurrentUser(const QString &user);
 signals:
     void returnToMainMenu();
 

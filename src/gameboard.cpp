@@ -172,3 +172,8 @@ void GameBoard::closeEvent(QCloseEvent *event)
     // 允许窗口关闭
     event->accept();
 }
+
+void GameBoard::setCurrentUser(const QString &user)
+{
+    currentUser = user;
+}
