@@ -1,3 +1,4 @@
+#### filepath: d:\Code\Qt\2048\CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 
 project(2048 VERSION 0.1 LANGUAGES CXX)
@@ -5,16 +6,22 @@ project(2048 VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 找到Qt组件，只需要一次查找即可
+# 找到Qt组件
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Sql)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Sql)
 
 # 添加include目录到包含路径
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# 定义资源文件
+set(APP_ICON_RESOURCE "")
+if(WIN32)
+    # 这里指定你要使用的 .rc 文件
+    set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/logo.rc")
+endif()
 
 # 统一定义所有源文件
 set(PROJECT_SOURCES
@@ -25,11 +32,15 @@ set(PROJECT_SOURCES
     include/mainwindow.h src/mainwindow.cpp
     include/login.h src/login.cpp
     include/database.h src/database.cpp
+    # 如果在 Qt6 上使用 qt_add_executable，需要把资源文件也加到这里
+    ${APP_ICON_RESOURCE}
 )
 
 # 定义可执行文件目标
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    # 注意加上 ${APP_ICON_RESOURCE}
     qt_add_executable(2048
+        WIN32                  # WIN32 选项可隐藏控制台窗口
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
@@ -40,55 +51,42 @@ else()
         )
     else()
         add_executable(2048
+            WIN32
             ${PROJECT_SOURCES}
         )
     endif()
 endif()
 
-# 链接Qt库（只需要一次链接语句）
+# 链接Qt库
 target_link_libraries(2048 PRIVATE 
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Sql
 )
 
 # 设置应用程序属性
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.2048)
-endif()
-
 set_target_properties(2048 PROPERTIES
-    ${BUNDLE_ID_OPTION}
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
 
 # 安装目标
-include(GNUInstallDirs)
 install(TARGETS 2048
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION .
+    LIBRARY DESTINATION .
 )
 
-# 对于Qt6，完成可执行文件的设置
+# 如果是 Qt6，完成可执行文件的设置
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(2048)
 endif()
 
-# 确保SQL驱动能够正确部署
-# 对于Windows平台，复制Qt SQL驱动到插件目录
+# 复制一下 SQLite 驱动（如有必要）
 if(WIN32)
-    # 获取Qt库路径
     get_target_property(_qmake_executable Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
     get_filename_component(_qt_bin_dir "${_qmake_executable}" DIRECTORY)
-    
-    # 从bin目录转到plugins目录
     get_filename_component(_qt_root_dir "${_qt_bin_dir}" DIRECTORY)
     set(_qt_plugins_dir "${_qt_root_dir}/plugins")
-    
-    # 添加自定义命令，复制SQL驱动到目标目录
+
     add_custom_command(TARGET 2048 POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory 
             "$<TARGET_FILE_DIR:2048>/plugins/sqldrivers"
